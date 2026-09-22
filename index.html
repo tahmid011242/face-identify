@@ -1,0 +1,532 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>Face Identify</title>
+
+    <script src="https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.min.js"></script>
+
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            background: #273121;
+            color: rgb(250, 250, 250);
+            font-family: Arial, sans-serif;
+        }
+
+        .header {
+            text-align: center;
+            padding: 40px 30px;
+        }
+
+        .header h1 {
+            margin: 0;
+            font-size: 45px;
+        }
+
+        .header p {
+            color: #f8f7f7;
+            margin-top: 14px;
+        }
+
+        .card {
+            width: 90%;
+            max-width: 800px;
+
+            margin: auto;
+            background: #86d4f1;
+            border-radius: 20px;
+            padding: 16px;
+            box-shadow: 0 8px 30px rgba(251, 28, 28, 0.338);
+        }
+
+        .camera {
+            position: relative;
+            width: 100%;
+            overflow: hidden;
+            border-radius: 20px;
+            background: rgb(0, 0, 0);
+        }
+
+        video {
+            width: 100%;
+            display: block;
+            transform: scaleX(-1);
+        }
+
+        canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            transform: scaleX(1);
+        }
+
+        .status {
+            text-align: center;
+            padding: 15px 5px;
+            font-size: 16px;
+            color: #f90c0c;
+        }
+
+        .buttons {
+            display: flex;
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        button {
+            flex: 1;
+            padding: 14px;
+            border: none;
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        .start {
+            background: #00ff4c;
+            color: white;
+        }
+
+        .stop {
+            background: #d50000;
+            color: rgb(255, 255, 255);
+        }
+
+        .info {
+            margin-top: 15px;
+            display: grid;
+            grid-template-columns: 2fr 2fr;
+            gap: 10px;
+        }
+
+        .box {
+            background: #e6ff05;
+            border-radius: 12px;
+            padding: 15px;
+            text-align: center;
+        }
+
+        .box small {
+            color: #000000;
+        
+        }
+
+        .box strong {
+            display: block;
+            margin-top: 5px;
+            font-size: 20px;
+        }
+
+        .footer {
+            text-align: center;
+            color:#fdfdfd;
+            font-size: 15px;
+            margin: 25px;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="header">
+        <h1>Face Indentify</h1>
+        <p>Age & Gender</p>
+    </div>
+
+    <div class="card">
+
+        <div class="camera">
+
+            <video id="video" autoplay muted playsinline>
+            </video>
+
+        </div>
+
+        <div class="status" id="status">
+            Loading...
+        </div>
+
+        <div class="buttons">
+
+            <button class="start" onclick="startCamera()">
+                START
+            </button>
+
+            <button class="stop" onclick="stopCamera()">
+                STOP
+            </button>
+
+        </div>
+
+        <div class="info">
+
+            <div class="box">
+                <small>Estimated Age
+                    (Accurancy 50-100%)
+                </small>
+                <strong id="age">--</strong>
+            </div>
+
+            <div class="box">
+                <small>Gender
+                    (Accurancy 99.99%)
+                </small>
+                <strong id="gender">--</strong>
+            </div>
+
+            <div class="box">
+                <small>Gender Confidence
+                </small>
+                <strong id="confidence">--</strong>
+            </div>
+
+            <div class="box">
+                <small>Faces Found
+                    (Please stop your movement)
+                </small>
+                <strong id="faces">0</strong>
+            </div>
+
+        </div>
+
+    </div>
+
+    <div class="footer">
+        I'll try my best to give an accurate answer.<br>If i make any mistakes, please forgive me...
+        <br><br><strong>Created by Tahmid Ahsan</strong>
+    </div>
+
+
+    <script>
+
+        const video = document.getElementById("video");
+        const statusText = document.getElementById("status");
+
+        const ageText = document.getElementById("age");
+        const genderText = document.getElementById("gender");
+        const confidenceText =
+            document.getElementById("confidence");
+        const facesText =
+            document.getElementById("faces");
+
+        const MODEL_URL =
+            "https://cdn.jsdelivr.net/gh/justadudewhohacks/face-api.js@0.22.2/weights";
+
+        let stream = null;
+        let canvas = null;
+        let running = false;
+
+
+        //ai model
+        async function loadAI() {
+
+            try {
+
+                statusText.innerText =
+                    "Loading AI models...";
+
+                await faceapi.nets.tinyFaceDetector
+                    .loadFromUri(MODEL_URL);
+
+                await faceapi.nets.ageGenderNet
+                    .loadFromUri(MODEL_URL);
+
+                statusText.innerText =
+                    " I am Ready,Press START button & Please show your face...";
+
+            }
+
+            catch (error) {
+
+                console.error(error);
+
+                statusText.innerText =
+                    "Model loading failed";
+
+            }
+
+        }
+
+        loadAI();
+
+
+        //camera function(start)
+
+        async function startCamera() {
+
+            if (running)
+                return;
+
+            try {
+
+                stream =
+                    await navigator.mediaDevices
+                        .getUserMedia({
+
+                            video: {
+                                facingMode: "user",
+                                width: {
+                                    ideal: 720
+                                },
+                                height: {
+                                    ideal: 1280
+                                }
+                            },
+
+                            audio: false
+
+                        });
+
+                video.srcObject = stream;
+
+                running = true;
+
+                statusText.innerText =
+                    "Camera Running(don't movement)";
+
+                video.onloadedmetadata = () => {
+
+                    createCanvas();
+
+                    detectFaces();
+
+                };
+
+            }
+
+            catch (error) {
+
+                console.error(error);
+
+                statusText.innerText =
+                    "Sorry ,Your Device not given permit for camera";
+
+            }
+
+        }
+
+
+        //camera function(stop)
+
+        function stopCamera() {
+
+            running = false;
+
+            if (stream) {
+
+                stream.getTracks().forEach(track => {
+                    track.stop();
+                });
+
+                stream = null;
+
+            }
+
+            if (canvas) {
+
+                canvas.remove();
+
+                canvas = null;
+
+            }
+
+            video.srcObject = null;
+
+            ageText.innerText = "--";
+            genderText.innerText = "--";
+            confidenceText.innerText = "--";
+            facesText.innerText = "0";
+
+            statusText.innerText =
+                "Camera stopped";
+
+        }
+
+
+        //canvas function
+
+        function createCanvas() {
+
+            if (canvas)
+                canvas.remove();
+
+            canvas =
+                faceapi.createCanvasFromMedia(video);
+
+            document
+                .querySelector(".camera")
+                .appendChild(canvas);
+
+            const size = {
+
+                width: video.videoWidth,
+                height: video.videoHeight
+
+            };
+
+            faceapi.matchDimensions(
+                canvas,
+                size
+            );
+
+        }
+
+
+        //face detector function
+        async function detectFaces() {
+
+            if (!running)
+                return;
+
+            try {
+
+                const detections =
+                    await faceapi
+                        .detectAllFaces(
+                            video,
+                            new faceapi.TinyFaceDetectorOptions({
+                                inputSize: 224,
+                                scoreThreshold: 0.5
+                            })
+                        )
+                        .withAgeAndGender();
+
+
+                const displaySize = {
+
+                    width: video.videoWidth,
+                    height: video.videoHeight
+
+                };
+
+
+                const resized =
+                    faceapi.resizeResults(
+                        detections,
+                        displaySize
+                    );
+
+
+                canvas
+                    .getContext("2d")
+                    .clearRect(
+                        0,
+                        0,
+                        canvas.width,
+                        canvas.height
+                    );
+
+
+                facesText.innerText =
+                    resized.length;
+
+
+                if (resized.length > 0) {
+
+                    const person = resized[0];
+
+                    let age =
+                        Math.round(person.age);
+
+
+                    //age setup
+                    age =
+                        Math.max(
+                            1,
+                            Math.min(100, age)
+                        );
+
+
+                    const gender =
+                        person.gender;
+
+
+                    const confidence =
+                        Math.round(
+                            person.genderProbability * 100
+                        );
+
+
+                    ageText.innerText =
+                        age + " years";
+
+
+                    genderText.innerText =
+                        gender;
+
+
+                    confidenceText.innerText =
+                        confidence + "%";
+
+
+                    //boxs
+                    resized.forEach(face => {
+
+                        const box =
+                            face.detection.box;
+
+                        const drawBox =
+                            new faceapi.draw.DrawBox(
+                                box,
+                                {
+                                    label:
+                                        `Age: ${Math.round(face.age)}`
+                                }
+                            );
+
+                        drawBox.draw(canvas);
+
+                    });
+
+
+                    statusText.innerText =
+                        "Yes!! Face detected";
+
+                }
+
+                else {
+
+                    ageText.innerText = "--";
+                    genderText.innerText = "--";
+                    confidenceText.innerText = "--";
+
+                    statusText.innerText =
+                        "Looking for face...";
+
+                }
+
+            }
+
+            catch (error) {
+
+                console.log(error);
+
+            }
+
+
+            //return 1
+            if (running) {
+
+                setTimeout(
+                    detectFaces,
+                    500
+                );
+
+            }
+
+        }
+
+    </script>
+
+</body>
+
+</html>
