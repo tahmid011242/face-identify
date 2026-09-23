@@ -16,7 +16,7 @@
 
         body {
             margin: 0;
-            background: #273121;
+            background: #171b14;
             color: rgb(250, 250, 250);
             font-family: Arial, sans-serif;
         }
@@ -32,16 +32,14 @@
         }
 
         .header p {
-            color: #f8f7f7;
             margin-top: 14px;
         }
 
         .card {
             width: 90%;
             max-width: 1000px;
-
             margin: auto;
-            background: #86d4f1;
+            background: #75a8ba;
             border-radius: 20px;
             padding: 16px;
             box-shadow: 0 8px 30px rgba(251, 28, 28, 0.338);
@@ -53,14 +51,19 @@
             min-height: 500px;
             overflow: hidden;
             border-radius: 20px;
-            background: rgb(0, 0, 0);
+            background: black;
         }
 
-        video {
+        video,
+        #photo {
             width: 100%;
             min-height: 500px;
             object-fit: cover;
             display: block;
+        }
+
+        /* Front camera mirror */
+        .front-camera {
             transform: scaleX(-1);
         }
 
@@ -68,7 +71,6 @@
             position: absolute;
             top: 0;
             left: 0;
-            transform: scaleX(1);
         }
 
         .status {
@@ -76,16 +78,17 @@
             padding: 15px 5px;
             font-size: 16px;
             color: #f90c0c;
+            font-weight: bold;
         }
 
         .buttons {
-            display: flex;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
             gap: 10px;
             margin-top: 10px;
         }
 
         button {
-            flex: 1;
             padding: 14px;
             border: none;
             border-radius: 12px;
@@ -94,20 +97,40 @@
             cursor: pointer;
         }
 
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
         .start {
-            background: #00ff4c;
+            background: #08ec4d;
             color: white;
         }
 
         .stop {
             background: #d50000;
-            color: rgb(255, 255, 255);
+            color: white;
+        }
+
+        .cameraSwitch {
+            background: #1565c0;
+            color: white;
+        }
+
+        .capture {
+            background: #ff00ff;
+            color: rgb(255, 251, 251);
+        }
+
+        .retake {
+            background: #098465;
+            color: rgb(249, 248, 248);
         }
 
         .info {
             margin-top: 15px;
             display: grid;
-            grid-template-columns: 2fr 2fr;
+            grid-template-columns: 1fr 1fr;
             gap: 10px;
         }
 
@@ -120,21 +143,44 @@
 
         .box small {
             color: #000000;
-        
         }
 
         .box strong {
             display: block;
             margin-top: 8px;
-            font-size: 28px;
+            font-size: 30px;
             color: #000000;
         }
 
         .footer {
             text-align: center;
-            color:#fdfdfd;
-            font-size: 15px;
-            margin: 25px;
+            color: #fdfdfd;
+            font-size: 18px;
+            margin: 27px;
+        }
+
+        #photo {
+            display: none;
+        }
+
+        @media (max-width: 600px) {
+
+            .header h1 {
+                font-size: 34px;
+            }
+
+            .camera {
+                min-height: 400px;
+            }
+
+            video,
+            #photo {
+                min-height: 400px;
+            }
+
+            .buttons {
+                grid-template-columns: 1fr 1fr;
+            }
         }
     </style>
 </head>
@@ -142,7 +188,7 @@
 <body>
 
     <div class="header">
-        <h1>Face Indentify</h1>
+        <h1>Face Identify</h1>
         <p>Age & Gender</p>
     </div>
 
@@ -150,23 +196,36 @@
 
         <div class="camera">
 
-            <video id="video" autoplay muted playsinline>
-            </video>
+            <video id="video" autoplay muted playsinline></video>
+
+            <img id="photo" alt="Captured Photo">
 
         </div>
 
         <div class="status" id="status">
-            Loading...
+            Loading AI models...
         </div>
 
         <div class="buttons">
 
             <button class="start" onclick="startCamera()">
-                START
+                START CAMERA
             </button>
 
             <button class="stop" onclick="stopCamera()">
                 STOP
+            </button>
+
+            <button class="cameraSwitch" onclick="switchCamera()">
+                 SWITCH CAMERA
+            </button>
+
+            <button class="capture" onclick="capturePhoto()" id="captureBtn" disabled>
+                 CAPTURE
+            </button>
+
+            <button class="retake" onclick="retakePhoto()" id="retakeBtn" disabled>
+                RETAKE
             </button>
 
         </div>
@@ -174,29 +233,34 @@
         <div class="info">
 
             <div class="box">
-                <small>Estimated Age
-                    (Accurancy 50-100%)
+                <small>
+                    Estimated Age
                 </small>
+
                 <strong id="age">--</strong>
             </div>
 
             <div class="box">
-                <small>Gender
-                    (Accurancy 99.99%)
+                <small>
+                    Gender
                 </small>
+
                 <strong id="gender">--</strong>
             </div>
 
             <div class="box">
-                <small>Gender Confidence
+                <small>
+                    Gender Confidence
                 </small>
+
                 <strong id="confidence">--</strong>
             </div>
 
             <div class="box">
-                <small>Faces Found
-                    (Please stop your movement)
+                <small>
+                    Faces Found
                 </small>
+
                 <strong id="faces">0</strong>
             </div>
 
@@ -205,32 +269,64 @@
     </div>
 
     <div class="footer">
-        I'll try my best to give an accurate answer.<br>If i make any mistakes, please forgive me...
-        <br><br><strong>Created by Tahmid Ahsan</strong>
+
+        I'll try my best to give an accurate answer.
+        <br>
+        If I make any mistakes, please forgive me...
+
+        <br><br>
+
+        <strong>Created by Tahmid Ahsan</strong>
+
     </div>
 
 
     <script>
 
         const video = document.getElementById("video");
-        const statusText = document.getElementById("status");
+        const photo = document.getElementById("photo");
 
-        const ageText = document.getElementById("age");
-        const genderText = document.getElementById("gender");
+        const statusText =
+            document.getElementById("status");
+
+        const ageText =
+            document.getElementById("age");
+
+        const genderText =
+            document.getElementById("gender");
+
         const confidenceText =
             document.getElementById("confidence");
+
         const facesText =
             document.getElementById("faces");
+
+        const captureBtn =
+            document.getElementById("captureBtn");
+
+        const retakeBtn =
+            document.getElementById("retakeBtn");
+
 
         const MODEL_URL =
             "https://cdn.jsdelivr.net/gh/justadudewhohacks/face-api.js@0.22.2/weights";
 
+
         let stream = null;
+
         let canvas = null;
+
         let running = false;
 
+        let currentCamera = "user";
 
-        //ai model
+        let modelsLoaded = false;
+
+
+        // =========================
+        // LOAD AI MODELS
+        // =========================
+
         async function loadAI() {
 
             try {
@@ -244,8 +340,10 @@
                 await faceapi.nets.ageGenderNet
                     .loadFromUri(MODEL_URL);
 
+                modelsLoaded = true;
+
                 statusText.innerText =
-                    " I am Ready,Press START button & Please show your face...";
+                    "If you Ready, Press to START button.";
 
             }
 
@@ -254,21 +352,37 @@
                 console.error(error);
 
                 statusText.innerText =
-                    "Model loading failed";
+                    "Model loading failed.";
 
             }
 
         }
 
+
         loadAI();
 
 
-        //camera function(start)
+        // =========================
+        // START CAMERA
+        // =========================
 
         async function startCamera() {
 
-            if (running)
+            if (!modelsLoaded) {
+
+                statusText.innerText =
+                    "Please wait. AI models are loading...";
+
                 return;
+            }
+
+
+            if (running) {
+
+                stopCamera(false);
+
+            }
+
 
             try {
 
@@ -277,25 +391,45 @@
                         .getUserMedia({
 
                             video: {
-                                facingMode: "user",
+
+                                facingMode: {
+                                    ideal: currentCamera
+                                },
+
                                 width: {
                                     ideal: 720
                                 },
+
                                 height: {
                                     ideal: 1280
                                 }
+
                             },
 
                             audio: false
 
                         });
 
+
                 video.srcObject = stream;
 
                 running = true;
 
+                photo.style.display = "none";
+
+                video.style.display = "block";
+
+                updateCameraStyle();
+
+
                 statusText.innerText =
-                    "Camera Running(don't movement)";
+                    "Camera Running. Show your face.";
+
+
+                captureBtn.disabled = false;
+
+                retakeBtn.disabled = true;
+
 
                 video.onloadedmetadata = () => {
 
@@ -312,28 +446,86 @@
                 console.error(error);
 
                 statusText.innerText =
-                    "Sorry ,Your Device not given permit for camera";
+                    "Camera permission denied or camera unavailable.";
 
             }
 
         }
 
 
-        //camera function(stop)
+        // =========================
+        // SWITCH CAMERA
+        // =========================
 
-        function stopCamera() {
+        async function switchCamera() {
+
+            if (currentCamera === "user") {
+
+                currentCamera = "environment";
+
+            }
+
+            else {
+
+                currentCamera = "user";
+
+            }
+
+
+            if (running) {
+
+                await startCamera();
+
+            }
+
+
+            updateCameraStyle();
+
+        }
+
+
+        // =========================
+        // CAMERA STYLE
+        // =========================
+
+        function updateCameraStyle() {
+
+            if (currentCamera === "user") {
+
+                video.classList.add("front-camera");
+
+            }
+
+            else {
+
+                video.classList.remove("front-camera");
+
+            }
+
+        }
+
+
+        // =========================
+        // STOP CAMERA
+        // =========================
+
+        function stopCamera(clearResult = true) {
 
             running = false;
+
 
             if (stream) {
 
                 stream.getTracks().forEach(track => {
+
                     track.stop();
+
                 });
 
                 stream = null;
 
             }
+
 
             if (canvas) {
 
@@ -343,39 +535,64 @@
 
             }
 
+
             video.srcObject = null;
 
-            ageText.innerText = "--";
-            genderText.innerText = "--";
-            confidenceText.innerText = "--";
-            facesText.innerText = "0";
+
+            if (clearResult) {
+
+                ageText.innerText = "--";
+
+                genderText.innerText = "--";
+
+                confidenceText.innerText = "--";
+
+                facesText.innerText = "0";
+
+            }
+
+
+            captureBtn.disabled = true;
+
+            retakeBtn.disabled = true;
+
 
             statusText.innerText =
-                "Camera stopped";
+                "Camera stopped.";
 
         }
 
 
-        //canvas function
+        // =========================
+        // CREATE CANVAS
+        // =========================
 
         function createCanvas() {
 
-            if (canvas)
+            if (canvas) {
+
                 canvas.remove();
+
+            }
+
 
             canvas =
                 faceapi.createCanvasFromMedia(video);
+
 
             document
                 .querySelector(".camera")
                 .appendChild(canvas);
 
+
             const size = {
 
                 width: video.videoWidth,
+
                 height: video.videoHeight
 
             };
+
 
             faceapi.matchDimensions(
                 canvas,
@@ -385,22 +602,33 @@
         }
 
 
-        //face detector function
+        // =========================
+        // LIVE FACE DETECTION
+        // =========================
+
         async function detectFaces() {
 
             if (!running)
                 return;
+
 
             try {
 
                 const detections =
                     await faceapi
                         .detectAllFaces(
+
                             video,
-                            new faceapi.TinyFaceDetectorOptions({
-                                inputSize: 224,
-                                scoreThreshold: 0.5
-                            })
+
+                            new faceapi
+                                .TinyFaceDetectorOptions({
+
+                                    inputSize: 224,
+
+                                    scoreThreshold: 0.5
+
+                                })
+
                         )
                         .withAgeAndGender();
 
@@ -408,6 +636,7 @@
                 const displaySize = {
 
                     width: video.videoWidth,
+
                     height: video.videoHeight
 
                 };
@@ -415,19 +644,28 @@
 
                 const resized =
                     faceapi.resizeResults(
+
                         detections,
+
                         displaySize
+
                     );
 
 
-                canvas
-                    .getContext("2d")
-                    .clearRect(
-                        0,
-                        0,
-                        canvas.width,
-                        canvas.height
-                    );
+                if (canvas) {
+
+                    canvas
+                        .getContext("2d")
+                        .clearRect(
+
+                            0,
+                            0,
+                            canvas.width,
+                            canvas.height
+
+                        );
+
+                }
 
 
                 facesText.innerText =
@@ -436,13 +674,14 @@
 
                 if (resized.length > 0) {
 
-                    const person = resized[0];
+                    const person =
+                        resized[0];
+
 
                     let age =
                         Math.round(person.age);
 
 
-                    //age setup
                     age =
                         Math.max(
                             1,
@@ -472,20 +711,26 @@
                         confidence + "%";
 
 
-                    //boxs
                     resized.forEach(face => {
 
                         const box =
                             face.detection.box;
 
+
                         const drawBox =
                             new faceapi.draw.DrawBox(
+
                                 box,
+
                                 {
+
                                     label:
                                         `Age: ${Math.round(face.age)}`
+
                                 }
+
                             );
+
 
                         drawBox.draw(canvas);
 
@@ -493,15 +738,18 @@
 
 
                     statusText.innerText =
-                        "Yes!! Face detected";
+                        "Face detected! You can capture now.";
 
                 }
 
                 else {
 
                     ageText.innerText = "--";
+
                     genderText.innerText = "--";
+
                     confidenceText.innerText = "--";
+
 
                     statusText.innerText =
                         "Looking for face...";
@@ -517,7 +765,6 @@
             }
 
 
-            //return 1
             if (running) {
 
                 setTimeout(
@@ -529,8 +776,264 @@
 
         }
 
+
+        // =========================
+        // CAPTURE PHOTO
+        // =========================
+
+        async function capturePhoto() {
+
+            if (!running)
+                return;
+
+
+            statusText.innerText =
+                "Capturing photo...";
+
+
+            const captureCanvas =
+                document.createElement("canvas");
+
+
+            captureCanvas.width =
+                video.videoWidth;
+
+
+            captureCanvas.height =
+                video.videoHeight;
+
+
+            const ctx =
+                captureCanvas.getContext("2d");
+
+
+            // Mirror front camera photo
+            if (currentCamera === "user") {
+
+                ctx.translate(
+                    captureCanvas.width,
+                    0
+                );
+
+                ctx.scale(-1, 1);
+
+            }
+
+
+            ctx.drawImage(
+
+                video,
+
+                0,
+                0,
+                captureCanvas.width,
+                captureCanvas.height
+
+            );
+
+
+            const imageData =
+                captureCanvas.toDataURL(
+                    "image/jpeg",
+                    0.95
+                );
+
+
+            photo.src =
+                imageData;
+
+
+            // Hide live camera
+            video.style.display =
+                "none";
+
+
+            if (canvas) {
+
+                canvas.style.display =
+                    "none";
+
+            }
+
+
+            photo.style.display =
+                "block";
+
+
+            running = false;
+
+
+            if (stream) {
+
+                stream.getTracks().forEach(track => {
+
+                    track.stop();
+
+                });
+
+                stream = null;
+
+            }
+
+
+            captureBtn.disabled =
+                true;
+
+
+            retakeBtn.disabled =
+                false;
+
+
+            statusText.innerText =
+                "Analyzing captured photo...";
+
+
+            // Detect face from captured image
+            photo.onload = async function () {
+
+                try {
+
+                    const detections =
+                        await faceapi
+                            .detectAllFaces(
+
+                                photo,
+
+                                new faceapi
+                                    .TinyFaceDetectorOptions({
+
+                                        inputSize: 224,
+
+                                        scoreThreshold: 0.5
+
+                                    })
+
+                            )
+                            .withAgeAndGender();
+
+
+                    facesText.innerText =
+                        detections.length;
+
+
+                    if (detections.length === 0) {
+
+                        ageText.innerText =
+                            "--";
+
+                        genderText.innerText =
+                            "--";
+
+                        confidenceText.innerText =
+                            "--";
+
+
+                        statusText.innerText =
+                            "No face found. Please RETAKE and try again.";
+
+                        return;
+
+                    }
+
+
+                    const person =
+                        detections[0];
+
+
+                    let age =
+                        Math.round(person.age);
+
+
+                    age =
+                        Math.max(
+                            1,
+                            Math.min(100, age)
+                        );
+
+
+                    const gender =
+                        person.gender;
+
+
+                    const confidence =
+                        Math.round(
+                            person.genderProbability * 100
+                        );
+
+
+                    ageText.innerText =
+                        age + " years";
+
+
+                    genderText.innerText =
+                        gender;
+
+
+                    confidenceText.innerText =
+                        confidence + "%";
+
+
+                    statusText.innerText =
+                        "Analysis complete!";
+
+
+                }
+
+                catch (error) {
+
+                    console.error(error);
+
+                    statusText.innerText =
+                        "Could not analyze the photo.";
+
+                }
+
+            };
+
+        }
+
+
+        // =========================
+        // RETAKE PHOTO
+        // =========================
+
+        function retakePhoto() {
+
+            photo.style.display =
+                "none";
+
+
+            video.style.display =
+                "block";
+
+
+            ageText.innerText =
+                "--";
+
+            genderText.innerText =
+                "--";
+
+            confidenceText.innerText =
+                "--";
+
+            facesText.innerText =
+                "0";
+
+
+            retakeBtn.disabled =
+                true;
+
+
+            updateCameraStyle();
+
+
+            startCamera();
+
+        }
+
     </script>
 
 </body>
 
 </html>
+```
